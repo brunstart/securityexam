@@ -2,8 +2,40 @@ spring:
   application:
     name: securityexam
 
+#  security:
+#    user:
+#      name: carami
+#      password: 1234
+
+# JDBC 추가했으면 이건 알아서 해야됨
+  datasource:
+    url: jdbc:mysql://localhost:3306/securitydb?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+# url 뒤에 추가로 들어가는 값에 대한 설명 : https://github.com/likelion-backend-2025/workspace/blob/main/%EC%B0%B8%EA%B3%A0/mysql_url.md
+    username: spring
+    password: spring1234
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+# 중요 정보는 환경 변수에 넣고 가져오게 하면 더 안전함
+jwt:
+  secretKey: 12345678901234567890123456789012
+  refreshKey: abcdefghijklmnopqrstuvwxyz123456
+  access-expiratioin-ms: 1800000    # 30 * 60 * 1000
+  refresh-expiration-ms: 604800000  # 7일
+
+
 server:
   tomcat:
     threads:
       max: 5
       min-spare: 3
+
+logging:
+  level:
+    org:
+      springframework:
+        security: info
