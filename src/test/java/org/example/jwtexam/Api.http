@@ -1,0 +1,42 @@
+POST http://localhost:8080/api/login
+Content-Type: application/json
+
+{
+  "username" : "carami",
+  "password" : "1234"
+}
+
+###
+GET http://localhost:8080/api/welcome
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjYXJhbWkiLCJlbWFpbCI6InRlc3RAdGVzdC5jb20iLCJ1c2VySWQiOjEsIm5hbWUiOiJrYW5nIiwicm9sZXMiOlsiVVNFUiJdLCJpYXQiOjE3NjI5MjE1NjQsImV4cCI6MTc2MjkyMzM2NH0.uKlpa_5TpwvVKr05z_Xnv39XsElyGvBKXGp19P9Lb00
+
+
+###
+GET http://localhost:8080/api/welcome
+Cookie: accessToken=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjYXJhbWkiLCJlbWFpbCI6InRlc3RAdGVzdC5jb20iLCJ1c2VySWQiOjEsIm5hbWUiOiJrYW5nIiwicm9sZXMiOlsiVVNFUiJdLCJpYXQiOjE3NjI5MjE1NjQsImV4cCI6MTc2MjkyMzM2NH0.uKlpa_5TpwvVKr05z_Xnv39XsElyGvBKXGp19P9Lb00
+
+###
+GET http://localhost:8080/api/welcome
+
+### 1. 정상 로그인
+POST http://localhost:8080/api/login
+Content-Type: application/json
+
+{
+  "username" : "carami",
+  "password" : "1234"
+}
+
+> {%
+    client.global.set("accessToken", response.body.accessToken);
+    client.global.set("refreshToken", response.body.refreshToken);
+%}
+
+### [출력] 저장된 토큰 확인 (디버깅용)
+GET http://localhost:8080/api/welcome
+Cookie: accessToken={{accessToken}}
+
+
+###
+GET http://localhost:8080/welcome
+Authorization: Bearer {{accessToken}}

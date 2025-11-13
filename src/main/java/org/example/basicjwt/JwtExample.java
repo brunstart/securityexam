@@ -28,7 +28,7 @@ public class JwtExample {
                 .subject("carami") //username  토큰의 주인. 사용자ID or email
                 .audience().add("lion-server").add("lion-frontserver").and()  // 이 토큰은 누구를 위한 것인가를 명시해서 의도하지 않은 곳에서 사용을 방지
                 .expiration(new Date(System.currentTimeMillis() + 3600 * 1000)) //토큰만료시간  3600초 = 60분 = 1시간입니다.
-                .notBefore(new Date()) // 지금부터 가능
+                .notBefore(new Date()) // 발급한 후에 언제부터 쓸 수 있을지 정할 수 있음 (지금부터 가능하도록 설정 되어있다)
                 .claim("role", "ADMIN") //커스텀데이터, 표준 클레임외에 필요한 정보를 넣을 수 있다.
                 .claim("name", "kang")
                 .signWith(secretKey2)  //토큰에 서명추가
