@@ -20,6 +20,18 @@ spring:
       ddl-auto: update
     show-sql: true
 
+  # OAuth
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: ${GITHUB_CLIENT_ID}
+            client-secret: ${GITHUB_CLIENT_SECRET}
+            scope:
+              - read:user
+              - user:email
+
 # 중요 정보는 환경 변수에 넣고 가져오게 하면 더 안전함
 jwt:
   secretKey: 12345678901234567890123456789012
@@ -38,4 +50,4 @@ logging:
   level:
     org:
       springframework:
-        security: info
+        security: trace
