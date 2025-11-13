@@ -1,5 +1,9 @@
 package org.example.jwtexam.controller;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -18,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -91,25 +96,63 @@ public class UserApiController {
     }
 
 
-    @PostMapping("/refreshMapping")
-    public ResponseEntity<?> refreshToken(HttpServletRequest request) {
-        // 1. 쿠키에서 리프레시 토큰을 추출
+    @PostMapping("/refreshToken")
+    public ResponseEntity<?> refreshToken(HttpServletRequest request, HttpServletResponse response){
+        //1. 쿠키에서 리프레시토큰을 추출..
+        String token = getRefreshTokenFromCookies(request);
+        //2. 토큰이 없다면??  400 에러반환
+        if(token == null){
+            return ResponseEntity.badRequest().body("리프레시 토큰이 없어요.");
+        }
 
-        // 2. 토큰이 없다면 400에러 반환
+        try {
+            //3. 토큰을 검증및 파싱   (예외 처리)
+            Claims claims = jwtTokenizer.parseRefreshToken(token);
+            //4. 우리 디비에 저장된 리프레시토큰과 가지고 온 리프레시 토큰이 일치하는지 확인!!   (반드시 해야할 일이지만,  우리 예제에서는 선택!!)
+            RefreshToken dbToken = refreshTokenService
+                    .findRefreshToken(token).orElseThrow(() -> new IllegalArgumentException("토큰이 없어요."));
+            if(dbToken == null || !token.equals(dbToken.getToken())){
 
-        // 3. 토큰을 검증 및 파싱 (예외 처리)
+                log.warn("사용자가 보낸 리프레시 토큰이 DB 와 달라요!!");
+//               이 시점에, DB의 토큰을 삭제하는 등 조치를 취할 수 있어요.
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("리프레시 토큰이 이상해요. ");
+            }
 
-        // 4. DB에 저장된 리프레시 토큰과 가지고 온 리프레시 토큰이 일치하는지 확인 (반드시 해야할 일이지만, 에제에서는 선택)
+            //5. 사용자 정보 추출
+            Long userId = claims.get("userId", Long.class);
+            User user = userService.getUser(userId).orElseThrow(() -> new IllegalArgumentException("사용자를 찾지 못했어요."));
 
-        // 5. 사용자 정보 추출
 
-        // 6. 새로운 액세스 토큰 생성
+            //6. 새로운 엑세스 토큰 생성
+            List<String> roles = claims.get("roles", List.class);
+            String accessToken = jwtTokenizer.createAccessToken(userId, user.getEmail(), user.getName(), user.getUsername(), roles);
 
-        // 7. 액세스 토큰 쿠키에 설정
 
-        // 8. 응답으로 반환
+            //7. 엑세스 토큰을 쿠키에 설정
+            addTokenCookie(response,"accessToken",accessToken,jwtTokenizer.getAccessTokenExpiration());
 
-        return ResponseEntity.ok("OK");
+            //8. 응답으로 보내주고!!
+            UserLoginResponseDto responseDto = UserLoginResponseDto.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(token)
+                    .name(user.getName())
+                    .userId(user.getId())
+                    .build();
+
+            return ResponseEntity.ok(responseDto);
+        }catch (SignatureException | MalformedJwtException | IllegalArgumentException e) {
+            // 잘못된 토큰 (서명 불일치, 형식 오류) 처리
+            log.error("Invalid refresh token: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid refresh token");
+        } catch (ExpiredJwtException e) {
+            //만료된 토큰 처리
+            log.warn("Expired refresh token: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Refresh token expired");
+        } catch (Exception e) {
+            // 기타 서버 오류 처리
+            log.error("Refresh token error: {}", e.getMessage());
+            return ResponseEntity.internalServerError().body("Internal server error");
+        }
     }
 
     private void addTokenCookie(HttpServletResponse response, String name, String value, Long expiration) {
@@ -118,5 +161,18 @@ public class UserApiController {
         cookie.setPath("/");
         cookie.setMaxAge(Math.toIntExact(expiration / 1000));
         response.addCookie(cookie);     // https를 사용한다고 하면 cookie.setSecure(true) 설정 반드시 필요
+    }
+
+    //'refreshToken' 쿠키에서만 토큰을 추출하는  메서드
+    private String getRefreshTokenFromCookies(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("refreshToken".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
     }
 }
